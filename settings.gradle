@@ -1,1 +1,1 @@
-include ':sample', ':span'
+include ':span'

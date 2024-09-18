@@ -1,98 +1,84 @@
-apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android'
-apply plugin: 'com.jfrog.bintray'
-apply plugin: 'com.github.dcendents.android-maven'
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+    id("maven-publish")
+}
+group = 'com.koai-dev'
+version = '1.0.0'
 
 android {
-  compileSdkVersion 28
+    compileSdk 34
 
-  defaultConfig {
-    minSdkVersion 16
-    targetSdkVersion 28
-  }
+    defaultConfig {
+        minSdkVersion 21
+    }
 
-  sourceSets {
-    main.java.srcDirs += 'src/main/kotlin'
-  }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    publishing {
+        singleVariant('release') {
+            withSourcesJar()
+            withJavadocJar()
+        }
+    }
+    lint {
+        abortOnError true
+        baseline file('lint-baseline.xml')
+    }
 }
 
 dependencies {
-  api "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-  api 'com.android.support:support-annotations:28.0.0'
+    api "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    api 'com.android.support:support-annotations:28.0.0'
 }
 
-def GROUP = 'me.gujun.android'
-def ARTIFACTID = 'span'
-def VERSION = '1.7'
 
-group = GROUP
-version = VERSION
+afterEvaluate{
+    publishing {
+        publications {
+            release(MavenPublication) {
+                groupId = 'com.koai-dev'
+                artifactId = 'span'
+                version = '1.0.0'
 
-install {
-  repositories.mavenInstaller {
-    pom.project {
-      name ARTIFACTID
-      description 'Styling text with fun'
-      url 'https://github.com/2dxgujun/Spannable-In-Kotlin'
-
-      packaging 'aar'
-      groupId GROUP
-      artifactId ARTIFACTID
-
-      licenses {
-        license {
-          name 'The Apache Software License, Version 2.0'
-          url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-          distribution 'repo'
+                afterEvaluate {
+                    from components.release
+                }
+            }
         }
-      }
-      developers {
-        developer {
-          id '2dxgujun'
-          name 'Jun Gu'
-          email "2dxgujun@gmail.com"
-        }
-      }
     }
-  }
 }
 
-try {
-  Properties properties = new Properties()
-  properties.load(project.rootProject.file('local.properties').newDataInputStream())
+task createReleaseTag {
+    doLast {
+        def tagName = "1.0.0"
+        try {
+            exec {
+                commandLine("git", "tag", "-a", tagName, "-m", "Release tag $tagName")
+            }
 
-  bintray {
-    user = properties.getProperty("bintrayUser")
-    key = properties.getProperty("bintrayApiKey")
-    configurations = ['archives']
-    pkg {
-      repo = 'maven'
-      name = ARTIFACTID
-      licenses = ['Apache-2.0']
-      vcsUrl = 'https://github.com/2dxgujun/Spannable-In-Kotlin.git'
+            exec {
+                commandLine("git", "push", "origin", tagName)
+            }
+        } catch (e) {
+            println(e.toString())
+        }
     }
-  }
-
-  task sourcesJar(type: Jar) {
-    from android.sourceSets.main.java.srcDirs
-    classifier = 'sources'
-  }
-
-  task javadoc(type: Javadoc) {
-    source = android.sourceSets.main.java.srcDirs
-    classpath = files(project.android.getBootClasspath())
-    excludes = ['**/*.kt']
-  }
-
-  task javadocJar(type: Jar, dependsOn: javadoc) {
-    from javadoc.destinationDir
-    classifier = 'javadoc'
-  }
-
-  artifacts {
-    archives javadocJar
-    archives sourcesJar
-  }
-} catch (Exception e) {
-  println e
 }
